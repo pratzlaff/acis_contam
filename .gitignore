@@ -1,0 +1,4 @@
+*~
+*.fits
+ardlib_qe.darwin
+ardlib_qe.linux*

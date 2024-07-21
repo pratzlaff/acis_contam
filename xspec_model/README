@@ -1,0 +1,20 @@
+#! /bin/bash
+
+#! /bin/sh
+
+cat - <<EOF
+Everything originally came from
+  /data/snafu/kashyap/Cal/ACIS_contam/alexey
+
+HEASOFT was then built, and Alexey's model built within XSPEC
+using
+  XSPEC12>initpackage contelem_L model.dat mymodels
+
+NOTE: it was necessary to modify mymodels/contam_elem.f:104 to point to the
+      new dat directory
+          dir='/data/legs/rpete/contam/xspec_model/dat/C-O-F'
+where /data/alexey/cal/contam/C-O-F was copied to the above
+
+The model is then loaded in XSPEC with
+  XSPEC12>lmod contelem_l ./mymodels
+EOF

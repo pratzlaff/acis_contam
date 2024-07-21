@@ -1,0 +1,45 @@
+#! /bin/bash
+
+# cannot have HEASOFT punlearn in the path before CIAO's
+
+export ASCDS_OVERRIDE=1
+
+if [ `hostname` == 'legs' ]
+then
+    export HEADAS=/usr/local/heasoft-6.16/x86_64-unknown-linux-gnu-libc2.19-0
+    . $HEADAS/headas-init.sh
+    source /usr/local/ciao/bin/ciao.sh
+    perl=perl
+else
+    export HEADAS=/soft/heasoft/x86_64-pc-linux
+    . $HEADAS/headas-init.sh
+    source /soft/ciao/bin/ciao.sh
+    perl=/proj/axaf/bin/perl
+fi
+
+obsfile=/data/legs/rpete/flight/acis_letg_cedge/data/mkn421/17682/tg_reprocess_osort1/acisf17682N002_evt2.fits
+detsubsys="ACIS-S3;QE=1;UNIFORM;TIME=`$perl -e 'printf "%d\n", (2015-1998)*86400*365.25'`"
+
+contamfile=../acisD1999-08-13contamN0009.fits
+
+x=512
+for y in 180 300 400 512
+do
+    punlearn ardlib
+
+    a=0
+    while [[ $a -lt 10 ]]
+    do
+	b=$(( $a + 1 ))
+	string="$contamfile[AXAF_CONTAM${b}]"
+	echo pset ardlib AXAF_ACIS${a}_CONTAM_FILE="$string"
+	pset ardlib AXAF_ACIS${a}_CONTAM_FILE="$string"
+	a=$b
+    done
+    env "LD_LIBRARY_PATH=$ASCDS_LIB;$ASCDS_INSTALL/ots/lib" ../ardlib_qe.linux "$detsubsys" $obsfile $x $y .18 2.0 1000 > trans_s3_chipy_${y}.txt
+
+done
+
+punlearn ardlib
+
+$perl mkplot.pl

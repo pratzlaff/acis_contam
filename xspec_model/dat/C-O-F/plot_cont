@@ -1,0 +1,31 @@
+w6
+
+ define ccc cyan
+ ctype black
+ 
+ location 4000 30000 4000 30000             
+      
+ notation -4 4 -4 4 
+ define expand_d 1.25
+ expand $expand_d
+ angle 0
+ limits -1 0 -1 0
+ ticksize -1 0 -1 0
+ box
+
+ data "C.dat"
+ lines 2 1000
+ read {e 1 trans 2}
+ conn (lg(e)) (lg(trans)) 0 1 black
+
+ data "O.dat"
+ lines 2 1000
+ read {e 1 trans 2}
+ conn (lg(e)) (lg(trans)) 0 1 red
+
+ data "F.dat"
+ lines 2 1000
+ read {e 1 trans 2}
+ conn (lg(e)) (lg(trans)) 0 1 blue
+
+
