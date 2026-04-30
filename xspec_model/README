@@ -1,8 +1,20 @@
 #! /bin/bash
 
-#! /bin/sh
+set -eo pipefail
 
-cat - <<EOF
+. ~/.bash_aliases
+shopt -s expand_aliases
+
+heainit
+
+rm -f mymodels/lpack_contelem_l.*
+initpackage contelem_L model.dat mymodels
+cd mymodels
+hmake
+cd -
+echo 'lmod contelem_l ./mymodels' | xspec
+
+: <<EOF
 Everything originally came from
   /data/snafu/kashyap/Cal/ACIS_contam/alexey
 

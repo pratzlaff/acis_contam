@@ -102,7 +102,7 @@ c---------------------------------------------------------------
      ~       status=status)
         if (status.ne.0) then
         !  dir='/data/alexey/cal/contam/C-O-F'
-          dir='/data/legs/rpete/contam/xspec_model/dat/C-O-F'
+         dir='/data/legs/rpete/flight/acis_contam/xspec_model/dat/C-O-F'
         endif
 
         ! load and process C
