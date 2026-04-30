@@ -2,3 +2,6 @@
 *.fits
 ardlib_qe.darwin
 ardlib_qe.linux*
+mymodels/contelem_lFunctionMap.*
+mymodels/*.so
+mymodels/*.o
