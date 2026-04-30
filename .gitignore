@@ -2,6 +2,8 @@
 *.fits
 ardlib_qe.darwin
 ardlib_qe.linux*
-mymodels/contelem_lFunctionMap.*
-mymodels/*.so
-mymodels/*.o
+xspec_model/mymodels/Makefile
+xspec_model/mymodels/*.o
+xspec_model/mymodels/*.so
+xspec_model/mymodels/contelem_lFunctionMap.*
+xspec_model/mymodels/lpack_contelem_l.*
