@@ -24,9 +24,9 @@ my ($dev, $win);
 
 #my $f04 = '/usr/local/caldb-4.1.2/data/chandra/acis/contam/acisD1999-08-13contamN0004.fits';
 
-my $f04 = '/data/legs/rpete/contam/acisD1999-08-13contamN0004.fits';
-my $f89 = '/data/legs/rpete/contam/acisD1999-08-13contamN9989.fits';
-my $f31 = '/data/legs/rpete/contam/acisD1999-08-13contamN9931.fits';
+my $f04 = '/data/legs/rpete/flight/acis_contam/acisD1999-08-13contamN0004.fits';
+my $f89 = '/data/legs/rpete/flight/acis_contam/acisD1999-08-13contamN9989.fits';
+my $f31 = '/data/legs/rpete/flight/acis_contam/acisD1999-08-13contamN9931.fits';
 
 my %p04 = read_contamfile($f04);
 my %p89 = read_contamfile($f89);
