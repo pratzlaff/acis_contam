@@ -12,7 +12,7 @@ initpackage contelem_L model.dat mymodels
 cd mymodels
 hmake
 cd -
-echo 'lmod contelem_l ./mymodels' | xspec
+xspec <<<'lmod contelem_l ./mymodels'
 
 : <<EOF
 Everything originally came from
