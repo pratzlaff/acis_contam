@@ -3,6 +3,8 @@ import astropy.io.fits
 import matplotlib.pyplot as plt
 import numpy as np
 
+# https://cxc.cfa.harvard.edu/ciao/download/papers/spatial_contam_effects.pdf
+
 def year2time(year):
     return 325.2425*86400*(year-1998)
 
@@ -10,7 +12,8 @@ def testfxy(fxy):
     n = fxy.shape[0]
     for i in range(1, n):
         diff = fxy[0] - fxy[i]
-        print(diff.min(), diff.max())
+        min, max = diff.min(), diff.max()
+        print(f'fxy[0] - fxy[{i}]: {min=:.4g}, max={max=:.4g}')
 
 def image(fname, ccd_id, energy, year):
     with astropy.io.fits.open(fname) as hdulist:
@@ -18,7 +21,6 @@ def image(fname, ccd_id, energy, year):
         data = hdu.data
         n = data['component'].shape[0]
         taus = np.zeros(data['fxy'].shape)
-
         time = year2time(year)
         for i in range(n):
             mu = np.interp(energy, data['energy'][i], data['mu'][i])
@@ -72,7 +74,8 @@ def year(fname, ccd_id, x, y, energy):
 def plot_image(args):
     taus = image(args.fname, args.ccd_id, args.energy, args.year)
     tau = taus.sum(axis=0)
-    print(tau.min(), tau.max());
+    min, max = tau.min(), tau.max()
+    print(f'{min=:.4g}, {max=:.4g}');
     fig = plt.figure()
     plt.imshow(tau, origin='lower')
     plt.xlabel('CHIPX')
@@ -83,7 +86,8 @@ def plot_image(args):
 def plot_energy(args):
     e, taus = energy(args.fname, args.ccd_id, args.x, args.y, args.year)
     tau = taus.sum(axis=0)
-    print(tau.min(), tau.max());
+    min, max = tau.min(), tau.max()
+    print(f'{min=:.4g}, {max=:.4g}');
     fig = plt.figure()
     plt.plot(e, tau)
     plt.xlabel('Energy')
@@ -94,7 +98,8 @@ def plot_energy(args):
 def plot_year(args):
     y, taus = year(args.fname, args.ccd_id, args.x, args.y, args.energy)
     tau = taus.sum(axis=0)
-    print(tau.min(), tau.max());
+    min, max = tau.min(), tau.max()
+    print(f'{min=:.4g}, {max=:.4g}');
     fig = plt.figure()
     ii = y < 2026
     plt.plot(y[ii], tau[ii])
