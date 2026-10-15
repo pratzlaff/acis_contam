@@ -91,9 +91,6 @@ use PGPLOT;
 
 use Contam;
 
-use Astro::FITS::CFITSIO;
-use Chandra::Tools::Common qw( read_bintbl_cols check_status );
-
 my $version = '0.1';
 
 use FindBin;
@@ -381,18 +378,6 @@ sub i3aimcheck {
     my $trans = exp(-$exp);
     printf "$y: tau = %.2f, trans = %.2f\n", $exp, $trans;
   }
-}
-
-sub depth_vs_time {
-  my ($p, $x, $y, $e, $year) = @_;
-
-  my @depth;
-
-  for (0..$year->nelem-1) {
-    push @depth, -log(transmittance($p, $x, $y, $year->at($_), $e)->at(0));
-  }
-  return pdl \@depth;
-
 }
 
 sub _help {

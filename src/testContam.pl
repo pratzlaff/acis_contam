@@ -10,7 +10,7 @@ my $taus = Contam::image($f, $ccd_id, $e, $year);
 my $tau = $taus->sumover();
 print $tau->min, " ", $tau->max, "\n";
 my $win1 = PDL::Graphics::PGPLOT::Window->new();
-$win1->imag($tau);
+$win1->imag($tau, { DrawWedge => 1 });
 $win1->label_axes('CHIPX', 'CHIPY', "S3 Contamination Layer Optical Depth at $e keV, $year");
 
 my  ($energy, $taus) = Contam::energy("/usr/local/ciao/CALDB/data/chandra/acis/contam/acisD1999-08-13contamN0016.fits", $ccd_id, $x, $y, $year);
