@@ -1,5 +1,13 @@
-#! /usr/bin/perl -w
+#! /usr/bin/perl
+
 use strict;
+use warnings;
+
+my $version = '0.1';
+
+use Carp;
+use Config;
+use FindBin;
 
 use PDL;
 use PDL::Graphics::PGPLOT;
@@ -11,17 +19,41 @@ use PGPLOT;
 use Chandra::Tools::Common qw( read_bintbl_cols check_status );
 use Data::Dumper;
 
-my %opts = (
-	    separateimages => 1,
-	    combinedimages => 1,
-	    imagesamp => 1,
-	    fakeimages => 0,
-	    odimage => 1, # images of optical depth instead of transmission
-	    ctable => 'heat',
-	    cidev => 'foo.ps/cps', #'89_31_cdiff.png/png',
-	    images_energy => 0.3, # energy at which to compute above
-	    itf => 0, # 0=linear, 1=log, 2=sqrt
-	   );
+use Getopt::Long;
+my %default_opts = (
+		    separateimages => 1,
+		    combinedimages => 1,
+		    imagesamp => 1,
+		    fakeimages => 0,
+		    odimage => 1, # images of optical depth instead of transmission
+		    ctable => 'heat',
+		    cidev => 'foo.ps/cps', #'89_31_cdiff.png/png',
+		    images_energy => 0.3, # energy at which to compute above
+		    itf => 0, # 0=linear, 1=log, 2=sqrt
+		    old => 0, # use old buggy routines
+		   );
+my %opts = %default_opts;
+GetOptions(\%opts,
+	   'separateimages=i', 'combinedimages=i', 'imagesamp=i', 'fakeimages=i',
+	   'ctab=s', 'cidev=s', 'images_energy=f', 'itf=i',
+	   'old!',
+	   'help!', 'version!', 'debug!',
+	   ) or die "Try --help for more information.\n";
+if ($opts{debug}) {
+  $SIG{__WARN__} = \&Carp::cluck;
+  $SIG{__DIE__} = \&Carp::confess;
+}
+$opts{help} and _help();
+$opts{version} and _version();
+
+sub _help {
+  exec("$Config{installbin}/perldoc", '-F', $FindBin::Bin . '/' . $FindBin::RealScript);
+}
+
+sub _version {
+  print $version,"\n";
+  exit 0;
+}
 
 my $dev;
 
@@ -32,11 +64,14 @@ my $f89 = '/data/legs/rpete/flight/acis_contam/acisD1999-08-13contamN9989.fits';
 my $f31 = '/data/legs/rpete/flight/acis_contam/acisD1999-08-13contamN9931.fits';
 my $caldb = '/usr/local/ciao/CALDB/data/chandra/acis/contam/acisD1999-08-13contamN0016.fits';
 
-#my %p04 = read_contamfile($f04);
-#my %p89 = read_contamfile($f89);
-#my %p31 = read_contamfile($f31);
-
 my (%p04, %p89, %p31);
+
+if ($opts{old}) {
+  $opts{imagesamp} = 8;
+  %p04 = read_contamfile($f04);
+  %p89 = read_contamfile($f89);
+  %p31 = read_contamfile($f31);
+}
 
 my @ccd_ids = map { 'ACIS-'.$_} 0..9;
 
@@ -143,9 +178,16 @@ for (@config) {
 
     my $ls = 1;
     for my $year (@years) {
-      my ($energy, $taus) = Contam::energy($f, $ccd_id, $x, $y, $year);
-      my $trans = exp(-$taus->sumover);
-      $win2->line($egrid, interpol($egrid, $energy, $trans),
+      my $yplot;
+      if (not $opts{old}) {
+	my ($energy, $taus) = Contam::energy($f, $ccd_id, $x, $y, $year);
+	my $tau = $taus->sumover;
+	my $trans = exp(-$tau);
+	$yplot = interpol($egrid, $energy, $trans);
+      } else {
+	$yplot = transmission($p->{$key}, $x, $y, $year, $egrid);
+      }
+      $win2->line($egrid, $yplot,
 	{ title => "$ps $s: CHIPX = $x, CHIPY = $y",
 	  axis => 'logx',
 	  yrange => [0,1],
@@ -183,9 +225,15 @@ for (@config) {
     my $ls = 1;
 
     for my $year (@years) {
-      my ($energy, $taus) = Contam::energy($f, $ccd_id, $x, $y, $year);
-      my $trans = exp(-$taus->sumover);
-      my $t2 = interpol($egrid, $energy, $trans);
+      my $t2;
+      if (not $opts{old}) {
+	my ($energy, $taus) = Contam::energy($f, $ccd_id, $x, $y, $year);
+	my $trans = exp(-$taus->sumover);
+	$t2 = interpol($egrid, $energy, $trans);
+      }
+      else {
+	$t2 = transmission($p->{$key}, $x, $y, $year, $egrid);
+      }
 
       $win3->line($egrid, $t1{$year} / $t2,
 	{ title => "04 / $ps: $s CHIPX = $x, CHIPY = $y",
@@ -211,20 +259,23 @@ if ($opts{separateimages} or $opts{combinedimages}) {
     for my $year (@years) {
       for my $key (@ccd_ids) {
 	my $ccd_id = substr($key, -1);
-	my $m;
+	my ($t, $d, $m);
 	if ($opts{fakeimages}) {
 	  $m = sequence(10,10);
 	}
 	else {
-	  my $taus = Contam::image($f, $ccd_id, $e, $year);
-	  my $t = exp(-$taus->sumover);
+	  if (not $opts{old}) {
+	    my $taus = Contam::image($f, $ccd_id, $e, $year);
+	    $t = exp(-$taus->sumover);
+	    $d = $taus->sumover - Contam::image($f, $ccd_id, 0.27, $year)->sumover;
+	  }
+	  else {
 
-	  my $d = Contam::image($f, $ccd_id, $e, $year)->sumover - Contam::image($f, $ccd_id, 0.27, $year)->sumover;
-
-	  #my ($t,$d) = transmission_map_multiplepos($p->{$key}, 1, 1024, 1, 1024, $year, $e);
-	  #$d = (transmission_map_multiplepos($p->{$key}, 1, 1024, 1, 1024, $year, 0.3))[1] - (transmission_map_multiplepos($p->{$key}, 1, 1024, 1, 1024, $year, 0.27))[1];
-	  $m = $opts{odimage} ? $d : $t;
+	    ($t,$d) = transmission_map_multiplepos($p->{$key}, 1, 1024, 1, 1024, $year, $e);
+	    $d = (transmission_map_multiplepos($p->{$key}, 1, 1024, 1, 1024, $year, 0.3))[1] - (transmission_map_multiplepos($p->{$key}, 1, 1024, 1, 1024, $year, 0.27))[1];
+	  }
 	}
+	$m = $opts{odimage} ? $d : $t;
 	$images{$ps}{$key}{$year} = $m;
 	my $mmax = $m->max;
 	$max = $mmax unless defined $max and $max > $mmax;
@@ -423,7 +474,7 @@ sub i3aimcheck {
   my @y = (2002, 2004, 2006, 2008);
   for my $y (@y) {
     my $exp = 0;
-    my $time = ($y - 1998) * 365.24 * 86400;
+    my $time = ($y - 1998) * 365.2425 * 86400;
     for my $i (0..$p->{component}->nelem-1) {
       my $c = $p->{component}->at($i);
       my $ss = ",($i)";
@@ -450,4 +501,147 @@ sub depth_vs_time {
   }
   return pdl \@depth;
 
+}
+
+sub transmission_map {
+  my ($p, $xlo, $xhi, $ylo, $yhi, $year, $e) = @_;
+
+  my $nx = $xhi-$xlo+1;
+  my $ny = $yhi-$ylo+1;
+
+  $_ /= $opts{imagesamp} for $nx, $ny;
+
+  my $map = zeroes($nx, $ny);
+
+  my $xvals = xvals($map)*$opts{imagesamp} + $opts{imagesamp}/2 + $xlo;
+  my $yvals = yvals($map)*$opts{imagesamp} + $opts{imagesamp}/2 + $ylo;
+
+  $_ = $_->flat for $xvals, $yvals;
+
+  for my $i (0..$xvals->nelem-1) {
+    my ($x, $y) = ($xvals->at($i), $yvals->at($i));
+    $map->set($x-$xlo, $y-$ylo,
+       transmission($p, $x, $y, $year, $e)
+       );
+  }
+  return wantarray ? ($map, -log($map)) : $map;
+}
+
+sub transmission_map_multiplepos {
+  my ($p, $xlo, $xhi, $ylo, $yhi, $year, $e) = @_;
+
+  my $nx = $xhi-$xlo+1;
+  my $ny = $yhi-$ylo+1;
+
+  $_ /= $opts{imagesamp} for $nx, $ny;
+
+  my $map = zeroes($nx, $ny);
+
+  my $xvals = xvals($map)*$opts{imagesamp} + $opts{imagesamp}/2 + $xlo;
+  my $yvals = yvals($map)*$opts{imagesamp} + $opts{imagesamp}/2 + $ylo;
+
+#  for my $i (0..$xvals->getdim(0)-1) {
+#    my ($x, $y) = ($xvals->slice("($i)"), $yvals->slice("($i)"));
+#    (my $tmp = $map->slice("($i)")) .= 
+#          transmission_multiplepos($p, $x, $y, $year, $e);
+  my $n = 4 * $opts{imagesamp};
+  for my $i (0..$xvals->getdim(0)/$n-1) {
+    my $ss = ($n*$i) . ':' . ($n*$i+$n-1);
+    my ($x, $y) = ($xvals->slice($ss)->flat, $yvals->slice($ss)->flat);
+    (my $tmp = $map->slice($ss)->flat) .=
+       transmission_multiplepos($p, $x, $y, $year, $e);
+  }
+
+  return wantarray ? ($map, -log($map)) : $map;
+
+}
+
+sub transmission {
+  my ($p, $x, $y, $year, $e) = @_;
+  $e = PDL::Core::topdl($e);
+
+  my $tau = tdep_tau($p, $x, $y, $year);
+
+  # dims 2 x edims
+  my $mu = interpol($e->dummy(0,$p->{energy}->getdim(1)), $p->{energy}, $p->{mu});
+
+  # FIXME : not dealing with distinct j
+  return exp(-sumover($mu * $tau));
+}
+
+sub transmission_multiplepos {
+  my ($p, $x, $y, $year, $e) = @_;
+  $e = PDL::Core::topdl($e);
+
+  my $tau = tdep_tau_multiplepos($p, $x, $y, $year);
+
+  # dims 2 x edims
+  my $mu = interpol($e->dummy(0,$p->{energy}->getdim(1)), $p->{energy}, $p->{mu});
+
+  # FIXME : not dealing with distinct j
+  return exp(-sumover($mu * $tau));
+}
+
+sub tdep_tau_multiplepos {
+  my ($p, $x, $y, $year) = @_;
+
+  my $time = ($year - 1998) * 365.2425 * 86400;
+
+  my $i = 1024 * ($y-1) + ($x-1);
+
+  return
+    interpol($time, $p->{time}, $p->{tau0}) +
+    interpol($time, $p->{time}, $p->{tau1}) * $p->{fxy}->dice($i)->xchg(0,1);
+}
+
+sub tdep_tau {
+  my ($p, $x, $y, $year) = @_;
+
+  my $time = ($year - 1998) * 365.2425 * 86400;
+
+  my $i = 1024 * ($y-1) + ($x-1);
+
+  my $tau0 = interpol($time, $p->{time}, $p->{tau0});
+  my $tau1 = interpol($time, $p->{time}, $p->{tau1});
+  my $fxy = $p->{fxy}->index($i);
+  return $tau0 + $tau1 * $fxy;
+}
+
+sub read_contamfile {
+
+  my $f = shift;
+
+  my $s=0;
+  my $fptr = Astro::FITS::CFITSIO::open_file($f,Astro::FITS::CFITSIO::READONLY(),$s);
+  check_status($s) or die;
+
+  my %p;
+
+  for my $n (2..11) {
+    $fptr->movabs_hdu($n, undef, $s);
+    check_status($s) or die "could not move to HDU number $n";
+
+    my $hdr = Astro::FITS::CFITSIO::fits_read_header($fptr);
+    exists $hdr->{DETNAM} or die "no DETNAM keyword in HDU number $n";
+
+    my $detnam = $hdr->{DETNAM};
+    ($detnam) =  $detnam =~ /^'(\S+)/;
+    my @cols = qw( component weight kappa n_energy energy mu n_time time tau0 tau1 fxy );
+    my @d = read_bintbl_cols($fptr, @cols);
+
+    @{$p{$detnam}}{@cols} = @d;
+
+    # FIXME : only uses the first row values of n_energy and n_time
+
+    $p{$detnam}{$_} = $p{$detnam}{$_}->slice('0:'.($p{$detnam}{n_energy}->at(0)-1).',')->sever for qw( energy mu );
+    die if which($p{$detnam}{n_energy} != $p{$detnam}{n_energy}->at(0))->nelem;
+
+    $p{$detnam}{$_} = $p{$detnam}{$_}->slice('0:'.($p{$detnam}{n_time}->at(0)-1).',')->sever for qw( tau0 tau1 time );
+    die if which($p{$detnam}{n_time} != $p{$detnam}{n_time}->at(0))->nelem;
+
+    # FIXME : only dealing with a single value of j
+    die if which($p{$detnam}{component} != $p{$detnam}{component}->at(0))->nelem;
+  }
+
+  return %p;
 }
