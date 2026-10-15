@@ -6,7 +6,7 @@ import numpy as np
 # https://cxc.cfa.harvard.edu/ciao/download/papers/spatial_contam_effects.pdf
 
 def year2time(year):
-    return 325.2425*86400*(year-1998)
+    return 365.2425*86400*(year-1998)
 
 def testfxy(fxy):
     n = fxy.shape[0]
