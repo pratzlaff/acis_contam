@@ -7,15 +7,19 @@ use warnings;
 use Exporter 'import';
 our @EXPORT_OK = qw(
 		     image
+		     energy
+		     year
 		  );
 
 use Carp;
 use Log::Any '$log';
 use PDL;
 
+# https://cxc.cfa.harvard.edu/ciao/download/papers/spatial_contam_effects.pdf
+
 sub year2time {
   my $year = shift;
-  return 325.2425*86400*($year-1998);
+  return 365.2425*86400*($year-1998);
 }
 
 sub image {
@@ -49,7 +53,8 @@ sub energy {
     }
     my $tau0 = interpol($time, $h->{'time    '}->slice("($i)"), $h->{'tau0    '}->slice("($i)"));
     my $tau1 = interpol($time, $h->{'time    '}->slice("($i)"), $h->{'tau1    '}->slice("($i)"));
-    my $tau = $tau0 + $tau1 * $h->{'fxy     '}->slice("$i,$x,$y");
+    my $fxy = $h->{'fxy     '}->slice("$i,$x,$y");
+    my $tau = $tau0 + $tau1 * $fxy;
     $taus->slice("($i)") .= $h->{'mu      '}->slice("($i)") * $tau;
   }
   return $energy, $taus;
