@@ -1,6 +1,9 @@
 #! /usr/bin/perl -w
 use strict;
 
+use FindBin;
+my $datadir = "$FindBin::Bin/../data";
+
 use PDL;
 use PDL::Graphics::PGPLOT;
 use Chandra::Tools::Common qw( read_bintbl_cols );
@@ -18,9 +21,9 @@ my @obsids = (440, 3526, 6751, 10649 );
 for my $o (@obsids) {
 
   my %f = (
-	   '04' => "I3arfs/obs${o}_ciao412_cir_j2000_specextract.warf",
-	   '89' => "I3arfs/obs${o}_ciao4_EAvF_ContamN9989.warf",
-	   '31' => "I3arfs/obs${o}_ciao4_EAvF_ContamN9931.warf",
+	   '04' => "$datadir/I3arfs/obs${o}_ciao412_cir_j2000_specextract.warf",
+	   '89' => "$datadir/I3arfs/obs${o}_ciao4_EAvF_ContamN9989.warf",
+	   '31' => "$datadir/I3arfs/obs${o}_ciao4_EAvF_ContamN9931.warf",
 	   );
 
   for my $k (keys %f) {
@@ -36,7 +39,7 @@ for my $o (@obsids) {
   my $year = $hdr->{TSTART}/86400/365.24 + 1998;
 }
 
-my $dev = 'e0102_arf_ratios.ps/ps';
+my $dev = '/xs';
 dev $dev, 2,1;
 autolog(1);
 for my $k ('89', '31') {
