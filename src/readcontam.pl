@@ -125,18 +125,18 @@ exit;
 
 =cut
 
-# print  transmission($p89{'ACIS-7'}, 1, 1, 2008, pdl(0.3,0.4)),"\n";
-# print  transmission($p89{'ACIS-7'}, 512, 512, 2008, pdl(0.3, 0.4)),"\n";
-# #print  transmission($p89{'ACIS-7'}, long(1,512,1,512), long(1,512,1,512), 2008, pdl(0.3,0.4)),"\n";
+# print  transmission($p89{'ACIS-7'}, 1, 1, pdl(0.3,0.4), 2008),"\n";
+# print  transmission($p89{'ACIS-7'}, 512, 512, pdl(0.3, 0.4), 2008),"\n";
+# #print  transmission($p89{'ACIS-7'}, long(1,512,1,512), long(1,512,1,512), pdl(0.3,0.4), 2008),"\n";
 # #exit;
 
 # my ($x, $y) = (sequence(1e1) % 512 +1, sequence(1e1)% 512+1);
 # my @t1;
 # for (0..$x->nelem-1) {
-#   push @t1, transmission($p89{'ACIS-7'}, $x->at($_), $y->at($_), 2008, 0.3)->at(0);
+#   push @t1, transmission($p89{'ACIS-7'}, $x->at($_), $y->at($_), 0.3, 2008)->at(0);
 # }
 # my $t1 = pdl \@t1;
-# my $t2 = transmission($p89{'ACIS-7'}, $x, $y, 2008, pdl(0.3,0.3));
+# my $t2 = transmission($p89{'ACIS-7'}, $x, $y, pdl(0.3,0.3), 2008);
 # print join(', ', stats($t2 - $t1)),"\n";
 # print $t1,"\n";
 # print $t2,"\n";
@@ -189,7 +189,8 @@ for (@config) {
 	my $trans = exp(-$tau);
 	$yplot = interpol($egrid, $energy, $trans);
       } else {
-	$yplot = transmission($p->{'ACIS-'.$ccd_id}, $x, $y, $year, $egrid);
+	$yplot = transmission($p->{'ACIS-'.$ccd_id}, $x, $y, $egrid, $year);
+
       }
       $win2->line($egrid, $yplot,
 	{ title => "$ps $s: CHIPX = $x, CHIPY = $y",
@@ -235,7 +236,7 @@ for (@config) {
 	$t2 = interpol($egrid, $energy, $trans);
       }
       else {
-	$t2 = transmission($p->{'ACIS-'.$ccd_id}, $x, $y, $year, $egrid);
+	$t2 = transmission($p->{'ACIS-'.$ccd_id}, $x, $y, $egrid, $year);
       }
 
       $win3->line($egrid, $t1{$year} / $t2,
@@ -346,7 +347,7 @@ if ($opts{combinedimages}) {
 
 }
 
-#line $egrid, transmission($p{'ACIS-7'}, 512, 512, 2009, $egrid), { title => 'ACIS-S3: CHIPX = CHIPY = 512', axis => 'logx', };
+#line $egrid, transmission($p{'ACIS-7'}, 512, 512, $egrid, 2009), { title => 'ACIS-S3: CHIPX = CHIPY = 512', axis => 'logx', };
 
 sub rotccw {
   my $img = shift;
@@ -499,7 +500,7 @@ sub depth_vs_time {
   my @depth;
 
   for (0..$year->nelem-1) {
-    push @depth, -log(transmission($p, $x, $y, $year->at($_), $e)->at(0));
+    push @depth, -log(transmission($p, $x, $y, $e, $year->at($_))->at(0));
   }
   return pdl \@depth;
 
@@ -523,7 +524,7 @@ sub transmission_map {
   for my $i (0..$xvals->nelem-1) {
     my ($x, $y) = ($xvals->at($i), $yvals->at($i));
     $map->set($x-$xlo, $y-$ylo,
-       transmission($p, $x, $y, $year, $e)
+       transmission($p, $x, $y, $e, $year)
        );
   }
   return wantarray ? ($map, -log($map)) : $map;
@@ -560,7 +561,7 @@ sub transmission_map_multiplepos {
 }
 
 sub transmission {
-  my ($p, $x, $y, $year, $e) = @_;
+  my ($p, $x, $y, $e, $year) = @_;
   $e = PDL::Core::topdl($e);
 
   my $tau = tdep_tau($p, $x, $y, $year);
