@@ -15,18 +15,18 @@ def testfxy(fxy):
         min, max = diff.min(), diff.max()
         print(f'fxy[0] - fxy[{i}]: {min=:.4g}, max={max=:.4g}')
 
-def image(fname, ccd_id, energy, year):
+def image(fname, ccd_id, energy, year, sample=1):
     with astropy.io.fits.open(fname) as hdulist:
         hdu = hdulist[ccd_id+1]
         data = hdu.data
         n = data['component'].shape[0]
-        taus = np.zeros(data['fxy'].shape)
+        taus = np.zeros_like(data['fxy'][:,::sample,::sample])
         time = year2time(year)
         for i in range(n):
             mu = np.interp(energy, data['energy'][i], data['mu'][i])
             tau0 = np.interp(time, data['time'][i], data['tau0'][i])
             tau1 = np.interp(time, data['time'][i], data['tau1'][i])
-            tau = tau0 + tau1 * data['fxy'][i]
+            tau = tau0 + tau1 * data['fxy'][i,::sample,::sample]
             taus[i] = mu * tau
     return taus
 
@@ -72,12 +72,13 @@ def year(fname, ccd_id, x, y, energy):
     return 1998+times/86400/365.2425, taus
 
 def plot_image(args):
-    taus = image(args.fname, args.ccd_id, args.energy, args.year)
+    sample=8
+    taus = image(args.fname, args.ccd_id, args.energy, args.year, sample=sample)
     tau = taus.sum(axis=0)
     min, max, mean = tau.min(), tau.max(), tau.mean()
     print(f'{min=:.4g}, {max=:.4g}, {mean=:.4g}');
     fig = plt.figure()
-    plt.imshow(tau, origin='lower')
+    plt.imshow(tau, origin='lower', extent=(0.5, 1024.5, 0.5, 1024.5))
     plt.xlabel('CHIPX')
     plt.ylabel('CHIPY')
     plt.colorbar()

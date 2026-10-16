@@ -24,16 +24,18 @@ sub year2time {
 
 sub image {
   my ($fname, $ccd_id, $energy, $year) = @_;
+  my $sample = 1;
+  $sample = $_[4] if @_>4;
   my $h = rfits($fname."[@{[$ccd_id+1]}]");
   my $n = +($h->{'component'}->dims)[0];
-  my $taus = zeros($h->{'fxy     '});
+  my $taus = zeros($h->{'fxy     '}->slice(",::$sample,::$sample"));
   my $time = year2time($year);
 
   for my $i (0..$n-1) {
     my $mu = interpol($energy, $h->{'energy  '}->slice("($i)"), $h->{'mu      '}->slice("($i)"));
     my $tau0 = interpol($time, $h->{'time    '}->slice("($i)"), $h->{'tau0    '}->slice("($i)"));
     my $tau1 = interpol($time, $h->{'time    '}->slice("($i)"), $h->{'tau1    '}->slice("($i)"));
-    my $tau = $tau0 + $tau1 * $h->{'fxy     '}->slice("($i)");
+    my $tau = $tau0 + $tau1 * $h->{'fxy     '}->slice("($i),::$sample,::$sample");
     $taus->slice("($i)") .= $mu * $tau;
   }
   return $taus;

@@ -23,7 +23,7 @@ use Getopt::Long;
 my %default_opts = (
 		    separateimages => 1,
 		    combinedimages => 1,
-		    imagesamp => 1,
+		    imagesamp => 8,
 		    fakeimages => 0,
 		    odimage => 1, # images of optical depth instead of transmission
 		    ctable => 'heat',
@@ -265,9 +265,9 @@ if ($opts{separateimages} or $opts{combinedimages}) {
 	}
 	else {
 	  if (not $opts{old}) {
-	    my $taus = Contam::image($f, $ccd_id, $e, $year);
+	    my $taus = Contam::image($f, $ccd_id, $e, $year, $opts{imagesamp});
 	    $t = exp(-$taus->sumover);
-	    $d = $taus->sumover - Contam::image($f, $ccd_id, 0.27, $year)->sumover;
+	    $d = $taus->sumover - Contam::image($f, $ccd_id, 0.27, $year, $opts{imagesamp})->sumover;
 	  }
 	  else {
 
@@ -307,8 +307,8 @@ if ($opts{separateimages}) {
 	$max = $m->max unless defined $max;
 	$min = $m->min unless defined $min;
 	my $tr = $win->transform( $m->dims,
-				  { RefPos => [[0,0], [1, 1]],
-				    PixInc => [1,1],
+				  { RefPos => [[0,0], [$opts{imagesamp}/2+0.5, $opts{imagesamp}/2+0.5]],
+				    PixInc => [$opts{imagesamp}, $opts{imagesamp}],
 				  });
 	my $title = "$ps : $s $year, $e keV";
 	$win->imag($m, { Transform => $tr, range => [$min,$max], drawwedge => 1,

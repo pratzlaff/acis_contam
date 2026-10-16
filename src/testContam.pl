@@ -7,11 +7,16 @@ my ($f, $ccd_id, $x, $y, $e, $year) = (
     7, 220, 520, 0.3, 2012,
   );
 
-my $taus = Contam::image($f, $ccd_id, $e, $year);
+my $sample=8;
+my $taus = Contam::image($f, $ccd_id, $e, $year, $sample);
 my $tau = $taus->sumover();
 printf "min=%.4g, max=%.4g, mean=%.4g\n", $tau->min, $tau->max, $tau->avg;
 my $win1 = PDL::Graphics::PGPLOT::Window->new();
-$win1->imag($tau, { DrawWedge => 1 });
+my $tr = $win1->transform( $tau->dims,
+			  { RefPos => [[0,0], [$sample/2+0.5, $sample/2+0.5]],
+			    PixInc => [$sample, $sample],
+			  });
+$win1->imag($tau, { transform => $tr, drawwedge => 1 });
 $win1->label_axes('CHIPX', 'CHIPY', "S3 Contamination Layer Optical Depth at $e keV, $year");
 
 my  ($energy, $taus) = Contam::energy($f, $ccd_id, $x, $y, $year);
