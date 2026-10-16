@@ -59,10 +59,10 @@ my $dev;
 
 #my $f04 = '/usr/local/caldb-4.1.2/data/chandra/acis/contam/acisD1999-08-13contamN0004.fits';
 
-my $f04 = '/data/legs/rpete/flight/acis_contam/acisD1999-08-13contamN0004.fits';
-my $f89 = '/data/legs/rpete/flight/acis_contam/acisD1999-08-13contamN9989.fits';
-my $f31 = '/data/legs/rpete/flight/acis_contam/acisD1999-08-13contamN9931.fits';
-my $caldb = '/usr/local/ciao/CALDB/data/chandra/acis/contam/acisD1999-08-13contamN0016.fits';
+my $f04 = '/data/legs/rpete/flight/acis_contam/data/acisD1999-08-13contamN0004.fits';
+my $f89 = '/data/legs/rpete/flight/acis_contam/data/acisD1999-08-13contamN9989.fits';
+my $f31 = '/data/legs/rpete/flight/acis_contam/data/acisD1999-08-13contamN9931.fits';
+my $caldb = '/data/legs/rpete/flight/acis_contam/data/acisD1999-08-13contamN0016.fits';
 
 my (%p04, %p89, %p31);
 

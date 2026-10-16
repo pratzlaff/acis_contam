@@ -74,8 +74,8 @@ def year(fname, ccd_id, x, y, energy):
 def plot_image(args):
     taus = image(args.fname, args.ccd_id, args.energy, args.year)
     tau = taus.sum(axis=0)
-    min, max = tau.min(), tau.max()
-    print(f'{min=:.4g}, {max=:.4g}');
+    min, max, mean = tau.min(), tau.max(), tau.mean()
+    print(f'{min=:.4g}, {max=:.4g}, {mean=:.4g}');
     fig = plt.figure()
     plt.imshow(tau, origin='lower')
     plt.xlabel('CHIPX')
@@ -86,8 +86,8 @@ def plot_image(args):
 def plot_energy(args):
     e, taus = energy(args.fname, args.ccd_id, args.x, args.y, args.year)
     tau = taus.sum(axis=0)
-    min, max = tau.min(), tau.max()
-    print(f'{min=:.4g}, {max=:.4g}');
+    min, max, mean = tau.min(), tau.max(), tau.mean()
+    print(f'{min=:.4g}, {max=:.4g}, {mean=:.4g}');
     fig = plt.figure()
     plt.plot(e, tau)
     plt.xlabel('Energy')
@@ -98,8 +98,8 @@ def plot_energy(args):
 def plot_year(args):
     y, taus = year(args.fname, args.ccd_id, args.x, args.y, args.energy)
     tau = taus.sum(axis=0)
-    min, max = tau.min(), tau.max()
-    print(f'{min=:.4g}, {max=:.4g}');
+    min, max, mean = tau.min(), tau.max(), tau.mean()
+    print(f'{min=:.4g}, {max=:.4g}, {mean=:.4g}');
     fig = plt.figure()
     ii = y < 2026
     plt.plot(y[ii], tau[ii])
