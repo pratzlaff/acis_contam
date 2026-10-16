@@ -23,20 +23,21 @@ use Getopt::Long;
 my %default_opts = (
 		    separateimages => 1,
 		    combinedimages => 1,
-		    imagesamp => 8,
+		    imagesamp => 1,
 		    fakeimages => 0,
 		    odimage => 1, # images of optical depth instead of transmission
 		    ctable => 'heat',
 		    cidev => 'foo.ps/cps', #'89_31_cdiff.png/png',
 		    images_energy => 0.3, # energy at which to compute above
 		    itf => 0, # 0=linear, 1=log, 2=sqrt
-		    old => 0, # use old buggy routines
+		    old => 0, # use old routines
+		    check => 0, # compare Contam.pm vs old routines
 		   );
 my %opts = %default_opts;
 GetOptions(\%opts,
 	   'separateimages=i', 'combinedimages=i', 'imagesamp=i', 'fakeimages=i',
 	   'ctab=s', 'cidev=s', 'images_energy=f', 'itf=i',
-	   'old!',
+	   'old!', 'check!',
 	   'help!', 'version!', 'debug!',
 	   ) or die "Try --help for more information.\n";
 if ($opts{debug}) {
@@ -57,17 +58,14 @@ sub _version {
 
 my $dev;
 
-#my $f04 = '/usr/local/caldb-4.1.2/data/chandra/acis/contam/acisD1999-08-13contamN0004.fits';
-
 my $f04 = '/data/legs/rpete/flight/acis_contam/data/acisD1999-08-13contamN0004.fits';
 my $f89 = '/data/legs/rpete/flight/acis_contam/data/acisD1999-08-13contamN9989.fits';
 my $f31 = '/data/legs/rpete/flight/acis_contam/data/acisD1999-08-13contamN9931.fits';
-my $caldb = '/data/legs/rpete/flight/acis_contam/data/acisD1999-08-13contamN0016.fits';
+my $fcaldb = '/data/legs/rpete/flight/acis_contam/data/acisD1999-08-13contamN0016.fits';
 
 my (%p04, %p89, %p31);
 
 if ($opts{old}) {
-  $opts{imagesamp} = 8;
   %p04 = read_contamfile($f04);
   %p89 = read_contamfile($f89);
   %p31 = read_contamfile($f31);
@@ -75,9 +73,25 @@ if ($opts{old}) {
 
 my @ccd_ids = map { 'ACIS-'.$_} 0..9;
 
-my ($x, $y, $e) = (512, 512, 0.5);
+my ($x, $y, $e, $year) = (512, 512, 0.3, 2012);
 
-my  ($dates, $taus) = Contam::year($f31, 7, $x, $y, $e);
+if ($opts{check}) {
+  # look for differences between these routines and Contam.pm
+  my %pcaldb = read_contamfile($fcaldb);
+  my ($t,$d1) = transmission_map_multiplepos($pcaldb{$ccd_ids[7]}, 1, 1024, 1, 1024, $e, $year);
+  my $d2 = Contam::image($fcaldb, 7, $e, $year, $opts{imagesamp})->sumover;
+  my $m = $d1-$d2;
+  print Dumper [$m->minmax];
+  my $win = PDL::Graphics::PGPLOT::Window->new();
+  $win->imag($m, { drawwedge => 1,
+		   ytitle => 'CHIPY',
+		   xtitle => 'CHIPX',
+		 }
+	    );
+  exit;
+}
+
+my ($dates, $taus) = Contam::year($f31, 7, $x, $y, $e);
 my $tau = $taus->sumover();
 my $win1 = PDL::Graphics::PGPLOT::Window->new();
 $win1->line($dates, $tau);
@@ -94,7 +108,7 @@ $win = PDL::Graphics::PGPLOT::Window->new(Device => $dev,
 					       nypanel => 2,
 					       aspectratio => 2/2,
 					      );
-my $m = transmission_map($p89{'ACIS-3'}, 1, 1024, 1, 1024, 2008, 0.4);
+my $m = transmission_map($p89{'ACIS-3'}, 1, 1024, 1, 1024, 0.4, 2008);
 my $max = $m->max;
 my $tr = $win->transform( $m->dims,
 			  { RefPos => [[0,0], [1, 1]],
@@ -134,18 +148,7 @@ $_ = log $_ for $elo, $ehi;
 my $egrid = exp(sequence(1000) / 1000 * ($ehi-$elo) + $elo);
 $_ = exp $_ for $elo, $ehi;
 
-my %chips = (
-	     'ACIS-0' => 'ACIS-I0',
-	     'ACIS-1' => 'ACIS-I1',
-	     'ACIS-2' => 'ACIS-I2',
-	     'ACIS-3' => 'ACIS-I3',
-	     'ACIS-4' => 'ACIS-S0',
-	     'ACIS-5' => 'ACIS-S1',
-	     'ACIS-6' => 'ACIS-S2',
-	     'ACIS-7' => 'ACIS-S3',
-	     'ACIS-8' => 'ACIS-S4',
-	     'ACIS-9' => 'ACIS-S5',
-	     );
+my %chips = map { 'ACIS-'.$_ => 'ACIS->I'.$_} 0..9;
 
 #my @years = (2002, 2004, 2006, 2008);
 # E0102 observation dates
@@ -271,8 +274,8 @@ if ($opts{separateimages} or $opts{combinedimages}) {
 	  }
 	  else {
 
-	    ($t,$d) = transmission_map_multiplepos($p->{$key}, 1, 1024, 1, 1024, $year, $e);
-	    $d = (transmission_map_multiplepos($p->{$key}, 1, 1024, 1, 1024, $year, 0.3))[1] - (transmission_map_multiplepos($p->{$key}, 1, 1024, 1, 1024, $year, 0.27))[1];
+	    ($t,$d) = transmission_map_multiplepos($p->{$key}, 1, 1024, 1, 1024, $e, $year);
+	    $d = (transmission_map_multiplepos($p->{$key}, 1, 1024, 1, 1024, 0.3, $year))[1] - (transmission_map_multiplepos($p->{$key}, 1, 1024, 1, 1024, 0.27, $year))[1];
 	  }
 	}
 	$m = $opts{odimage} ? $d : $t;
@@ -303,7 +306,7 @@ if ($opts{separateimages}) {
 
       for my $year (@years) {
 	my $m = $images{$ps}{$key}{$year};
-#	my $m = transmission_map_multiplepos($p->{$key}, 1, 1024, 1, 1024, $year, $e);
+#	my $m = transmission_map_multiplepos($p->{$key}, 1, 1024, 1, 1024, $e, $year);
 	$max = $m->max unless defined $max;
 	$min = $m->min unless defined $min;
 	my $tr = $win->transform( $m->dims,
@@ -504,7 +507,7 @@ sub depth_vs_time {
 }
 
 sub transmission_map {
-  my ($p, $xlo, $xhi, $ylo, $yhi, $year, $e) = @_;
+  my ($p, $xlo, $xhi, $ylo, $yhi, $e, $year) = @_;
 
   my $nx = $xhi-$xlo+1;
   my $ny = $yhi-$ylo+1;
@@ -528,7 +531,7 @@ sub transmission_map {
 }
 
 sub transmission_map_multiplepos {
-  my ($p, $xlo, $xhi, $ylo, $yhi, $year, $e) = @_;
+  my ($p, $xlo, $xhi, $ylo, $yhi, $e, $year) = @_;
 
   my $nx = $xhi-$xlo+1;
   my $ny = $yhi-$ylo+1;
@@ -540,16 +543,17 @@ sub transmission_map_multiplepos {
   my $xvals = xvals($map)*$opts{imagesamp} + $opts{imagesamp}/2 + $xlo;
   my $yvals = yvals($map)*$opts{imagesamp} + $opts{imagesamp}/2 + $ylo;
 
+
 #  for my $i (0..$xvals->getdim(0)-1) {
 #    my ($x, $y) = ($xvals->slice("($i)"), $yvals->slice("($i)"));
 #    (my $tmp = $map->slice("($i)")) .= 
-#          transmission_multiplepos($p, $x, $y, $year, $e);
+#          transmission_multiplepos($p, $x, $y, $e, $year);
   my $n = 4 * $opts{imagesamp};
   for my $i (0..$xvals->getdim(0)/$n-1) {
     my $ss = ($n*$i) . ':' . ($n*$i+$n-1);
     my ($x, $y) = ($xvals->slice($ss)->flat, $yvals->slice($ss)->flat);
     (my $tmp = $map->slice($ss)->flat) .=
-       transmission_multiplepos($p, $x, $y, $year, $e);
+       transmission_multiplepos($p, $x, $y, $e, $year);
   }
 
   return wantarray ? ($map, -log($map)) : $map;
@@ -570,7 +574,7 @@ sub transmission {
 }
 
 sub transmission_multiplepos {
-  my ($p, $x, $y, $year, $e) = @_;
+  my ($p, $x, $y, $e, $year) = @_;
   $e = PDL::Core::topdl($e);
 
   my $tau = tdep_tau_multiplepos($p, $x, $y, $year);
@@ -587,7 +591,7 @@ sub tdep_tau_multiplepos {
 
   my $time = ($year - 1998) * 365.2425 * 86400;
 
-  my $i = 1024 * ($y-1) + ($x-1);
+  my $i = 1024 * ($y->long-1) + ($x->long-1);
 
   return
     interpol($time, $p->{time}, $p->{tau0}) +
