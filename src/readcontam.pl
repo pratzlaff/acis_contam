@@ -71,14 +71,14 @@ if ($opts{old}) {
   %p31 = read_contamfile($f31);
 }
 
-my @ccd_ids = map { 'ACIS-'.$_} 0..9;
+my @ccd_ids = 0..9;
 
 my ($x, $y, $e, $year) = (512, 512, 0.3, 2012);
 
 if ($opts{check}) {
   # look for differences between these routines and Contam.pm
   my %pcaldb = read_contamfile($fcaldb);
-  my ($t,$d1) = transmission_map_multiplepos($pcaldb{$ccd_ids[7]}, 1, 1024, 1, 1024, $e, $year);
+  my ($t,$d1) = transmission_map_multiplepos($pcaldb{'ACIS-7'}, 1, 1024, 1, 1024, $e, $year);
   my $d2 = Contam::image($fcaldb, 7, $e, $year, $opts{imagesamp})->sumover;
   my $m = $d1-$d2;
   print Dumper [$m->minmax];
@@ -148,7 +148,9 @@ $_ = log $_ for $elo, $ehi;
 my $egrid = exp(sequence(1000) / 1000 * ($ehi-$elo) + $elo);
 $_ = exp $_ for $elo, $ehi;
 
-my %chips = map { 'ACIS-'.$_ => 'ACIS->I'.$_} 0..9;
+my %chips_i =  map { $_, 'ACIS-I'.$_ } 0..3;
+my %chips_s =  map { $_, 'ACIS-S'.($_-4) } 4..9;
+my %chips = (%chips_i, %chips_s);
 
 #my @years = (2002, 2004, 2006, 2008);
 # E0102 observation dates
@@ -160,9 +162,9 @@ my @years = (
 );
 # aimpoints from http://cxc.harvard.edu/proposer/POG/html/chap6.html#tth_sEc6.10
 my @config = (
-	      ['ACIS-3', 970, 967], # I3 aimpoint
-#	      ['ACIS-7', 221, 520], # S3 aimpoint
-#	      ['ACIS-5', 512, 150], # center of S1
+	      [3, 970, 967], # I3 aimpoint
+#	      [7, 221, 520], # S3 aimpoint
+#	      [5, 512, 150], # center of S1
 	      );
 
 my $win2 = PDL::Graphics::PGPLOT::Window->new(nxpanel => 3,
@@ -172,9 +174,8 @@ my $win2 = PDL::Graphics::PGPLOT::Window->new(nxpanel => 3,
 $win2->autolog(1);
 
 for (@config) {
-  my ($key, $x, $y) = @$_;
-  my $s = $chips{$key};
-  my $ccd_id = substr($key, -1);
+  my ($ccd_id, $x, $y) = @$_;
+  my $s = $chips{$ccd_id};
 
   for ([\%p04, '04', $f04], [\%p89, '89', $f89], [\%p31, '31', $f31]) {
     my ($p, $ps, $f) = @$_;
@@ -188,7 +189,7 @@ for (@config) {
 	my $trans = exp(-$tau);
 	$yplot = interpol($egrid, $energy, $trans);
       } else {
-	$yplot = transmission($p->{$key}, $x, $y, $year, $egrid);
+	$yplot = transmission($p->{'ACIS-'.$ccd_id}, $x, $y, $year, $egrid);
       }
       $win2->line($egrid, $yplot,
 	{ title => "$ps $s: CHIPX = $x, CHIPY = $y",
@@ -210,9 +211,8 @@ my $win3 = PDL::Graphics::PGPLOT::Window->new(nxpanel => 2,
 $win3->autolog(1);
 
 for (@config) {
-  my ($key, $x, $y) = @$_;
-  my $s = $chips{$key};
-  my $ccd_id = substr($key, -1);
+  my ($ccd_id, $x, $y) = @$_;
+  my $s = $chips{$ccd_id};
 
   my %t1;
   for my $year (@years) {
@@ -235,7 +235,7 @@ for (@config) {
 	$t2 = interpol($egrid, $energy, $trans);
       }
       else {
-	$t2 = transmission($p->{$key}, $x, $y, $year, $egrid);
+	$t2 = transmission($p->{'ACIS-'.$ccd_id}, $x, $y, $year, $egrid);
       }
 
       $win3->line($egrid, $t1{$year} / $t2,
@@ -260,8 +260,7 @@ if ($opts{separateimages} or $opts{combinedimages}) {
   for ([\%p89, '89', $f89], [\%p31, '31', $f31]) {
     my ($p, $ps, $f) = @$_;
     for my $year (@years) {
-      for my $key (@ccd_ids) {
-	my $ccd_id = substr($key, -1);
+      for my $ccd_id (@ccd_ids) {
 	my ($t, $d, $m);
 	if ($opts{fakeimages}) {
 	  $m = sequence(10,10);
@@ -274,12 +273,12 @@ if ($opts{separateimages} or $opts{combinedimages}) {
 	  }
 	  else {
 
-	    ($t,$d) = transmission_map_multiplepos($p->{$key}, 1, 1024, 1, 1024, $e, $year);
-	    $d = (transmission_map_multiplepos($p->{$key}, 1, 1024, 1, 1024, 0.3, $year))[1] - (transmission_map_multiplepos($p->{$key}, 1, 1024, 1, 1024, 0.27, $year))[1];
+	    ($t,$d) = transmission_map_multiplepos($p->{'ACIS-'.$ccd_id}, 1, 1024, 1, 1024, $e, $year);
+	    $d = (transmission_map_multiplepos($p->{'ACIS-'.$ccd_id}, 1, 1024, 1, 1024, 0.3, $year))[1] - (transmission_map_multiplepos($p->{'ACIS-'.$ccd_id}, 1, 1024, 1, 1024, 0.27, $year))[1];
 	  }
 	}
 	$m = $opts{odimage} ? $d : $t;
-	$images{$ps}{$key}{$year} = $m;
+	$images{$ps}{$ccd_id}{$year} = $m;
 	my $mmax = $m->max;
 	$max = $mmax unless defined $max and $max > $mmax;
 	my $mmin = $m->min;
@@ -293,8 +292,8 @@ if ($opts{separateimages} or $opts{combinedimages}) {
 
 if ($opts{separateimages}) {
 
-  for my $key (@ccd_ids) {
-    my $s = $chips{$key};
+  for my $ccd_id (@ccd_ids) {
+    my $s = $chips{$ccd_id};
 
     my $win = PDL::Graphics::PGPLOT::Window->new(nxpanel => 2,
 						 nypanel => 2,
@@ -305,8 +304,8 @@ if ($opts{separateimages}) {
       my ($max, $min);
 
       for my $year (@years) {
-	my $m = $images{$ps}{$key}{$year};
-#	my $m = transmission_map_multiplepos($p->{$key}, 1, 1024, 1, 1024, $e, $year);
+	my $m = $images{$ps}{$ccd_id}{$year};
+#	my $m = transmission_map_multiplepos($p->{'ACIS-'.$ccd_id}, 1, 1024, 1, 1024, $e, $year);
 	$max = $m->max unless defined $max;
 	$min = $m->min unless defined $min;
 	my $tr = $win->transform( $m->dims,
@@ -340,8 +339,8 @@ if ($opts{combinedimages}) {
     for my $p ('89', '31') {
       pgpage();
       acis_layout($images{min}, $images{max}, "$p : $y \\gt\\d0.30\\u - \\gt\\d0.27\\u", #"$p : $y $e keV",
-		  map { $images{$p}{'ACIS-'.$_}{$y} } (0..9)
-		  );
+		  map { $images{$p}{$_}{$y} } @ccd_ids
+		 );
     }
   }
 
