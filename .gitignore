@@ -2,9 +2,10 @@
 *.fits
 ardlib_qe.darwin
 ardlib_qe.linux*
+ardlib_qe
 *.o
 *.so
 *.tcl
-Makefile
+xspec_model/mymodels/Makefile
 contelem_lFunctionMap.*
 lpack_contelem_l.*

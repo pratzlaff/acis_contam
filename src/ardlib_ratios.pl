@@ -77,7 +77,7 @@ for my $k (keys %f) {
 	     );
 
   for my $i (0..$#t) {
-    my $out = `env LD_LIBRARY_PATH=$ENV{ASCDS_INSTALL}/lib $FindBin::Bin/../ardlib_qe.linux '$detsubsys;TIME=$t[$i]' $opts{obsfile} $xpos $ypos $emin $emax $n`;
+    my $out = `env LD_LIBRARY_PATH=$ENV{ASCDS_INSTALL}/lib $FindBin::Bin/ardlib_qe '$detsubsys;TIME=$t[$i]' $opts{obsfile} $xpos $ypos $emin $emax $n`;
     my (@e, @trans);
     for (split "\n", $out) {
       my ($e, $trans) = split ' ', $_;

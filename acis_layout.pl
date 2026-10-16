@@ -5,7 +5,7 @@ use PDL;
 use PDL::Graphics::PGPLOT;
 use PGPLOT;
 
-dev 'foo.ps/cps', 2, 4, { aspectratio => 4/2 };
+dev '/xs', 2, 4, { aspectratio => 4/2 };
 
 for (1..8) {
   pgpage();
